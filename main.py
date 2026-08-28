@@ -1,14 +1,48 @@
 from fastapi import FastAPI, HTTPException, Body
+import sqlite3
 
 app = FastAPI()
 
+DATABASE = "tasks.db"
 
-# In-memory list of tasks
-tasks = [
-    {"id": 1, "title": "Learn FastAPI", "done": False},
-    {"id": 2, "title": "Build a CRUD API", "done": False},
-    {"id": 3, "title": "Complete FlyRank Week 2", "done": False}
-]
+
+# Connect to database
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# Create table and insert example tasks if database is empty
+def init_db():
+    conn = get_db()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            done BOOLEAN NOT NULL
+        )
+    """)
+
+    count = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+
+    if count == 0:
+        conn.executemany(
+            "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
+            [
+                (1, "Learn FastAPI", False),
+                (2, "Build a CRUD API", False),
+                (3, "Complete FlyRank Week 2", False)
+            ]
+        )
+
+    conn.commit()
+    conn.close()
+
+
+# Initialize database when application starts
+init_db()
 
 
 @app.get("/", summary="API information")
@@ -19,6 +53,7 @@ def home():
         "endpoints": ["/tasks"]
     }
 
+
 @app.get("/health", summary="Check API health")
 def health():
     return {"status": "ok"}
@@ -26,14 +61,30 @@ def health():
 
 @app.get("/tasks", summary="List all tasks")
 def get_tasks():
-    return tasks
+    conn = get_db()
+
+    tasks = conn.execute(
+        "SELECT id, title, done FROM tasks"
+    ).fetchall()
+
+    conn.close()
+
+    return [dict(task) for task in tasks]
 
 
 @app.get("/tasks/{task_id}", summary="Get a task by ID")
 def get_task(task_id: int):
-    for task in tasks:
-        if task["id"] == task_id:
-            return task
+    conn = get_db()
+
+    task = conn.execute(
+        "SELECT id, title, done FROM tasks WHERE id = ?",
+        (task_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if task:
+        return dict(task)
 
     raise HTTPException(
         status_code=404,
@@ -51,45 +102,98 @@ def create_task(data: dict = Body(...)):
             detail="Title is required"
         )
 
-    new_task = {
-        "id": max(task["id"] for task in tasks) + 1,
-        "title": title,
-        "done": False
-    }
+    conn = get_db()
 
-    tasks.append(new_task)
+    new_id = conn.execute(
+        "SELECT COALESCE(MAX(id), 0) + 1 FROM tasks"
+    ).fetchone()[0]
 
-    return new_task
+    conn.execute(
+        "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
+        (new_id, title, False)
+    )
+
+    conn.commit()
+
+    task = conn.execute(
+        "SELECT id, title, done FROM tasks WHERE id = ?",
+        (new_id,)
+    ).fetchone()
+
+    conn.close()
+
+    return dict(task)
+
+
 @app.put("/tasks/{task_id}", summary="Update a task")
 def update_task(task_id: int, data: dict = Body(...)):
-    for task in tasks:
-        if task["id"] == task_id:
+    conn = get_db()
 
-            if "title" in data:
-                if not data["title"] or not data["title"].strip():
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Title cannot be empty"
-                    )
-                task["title"] = data["title"]
+    task = conn.execute(
+        "SELECT id, title, done FROM tasks WHERE id = ?",
+        (task_id,)
+    ).fetchone()
 
-            if "done" in data:
-                task["done"] = data["done"]
+    if not task:
+        conn.close()
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task {task_id} not found"
+        )
 
-            return task
+    if "title" in data:
+        if not data["title"] or not data["title"].strip():
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail="Title cannot be empty"
+            )
 
-    raise HTTPException(
-        status_code=404,
-        detail=f"Task {task_id} not found"
-    )
+        conn.execute(
+            "UPDATE tasks SET title = ? WHERE id = ?",
+            (data["title"], task_id)
+        )
+
+    if "done" in data:
+        conn.execute(
+            "UPDATE tasks SET done = ? WHERE id = ?",
+            (data["done"], task_id)
+        )
+
+    conn.commit()
+
+    updated_task = conn.execute(
+        "SELECT id, title, done FROM tasks WHERE id = ?",
+        (task_id,)
+    ).fetchone()
+
+    conn.close()
+
+    return dict(updated_task)
+
+
 @app.delete("/tasks/{task_id}", status_code=204, summary="Delete a task")
 def delete_task(task_id: int):
-    for task in tasks:
-        if task["id"] == task_id:
-            tasks.remove(task)
-            return
+    conn = get_db()
 
-    raise HTTPException(
-        status_code=404,
-        detail=f"Task {task_id} not found"
+    task = conn.execute(
+        "SELECT id FROM tasks WHERE id = ?",
+        (task_id,)
+    ).fetchone()
+
+    if not task:
+        conn.close()
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task {task_id} not found"
+        )
+
+    conn.execute(
+        "DELETE FROM tasks WHERE id = ?",
+        (task_id,)
     )
+
+    conn.commit()
+    conn.close()
+
+    return
