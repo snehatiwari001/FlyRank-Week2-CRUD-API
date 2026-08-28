@@ -61,3 +61,25 @@ def create_task(data: dict = Body(...)):
     tasks.append(new_task)
 
     return new_task
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, data: dict = Body(...)):
+    for task in tasks:
+        if task["id"] == task_id:
+
+            if "title" in data:
+                if not data["title"] or not data["title"].strip():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Title cannot be empty"
+                    )
+                task["title"] = data["title"]
+
+            if "done" in data:
+                task["done"] = data["done"]
+
+            return task
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Task {task_id} not found"
+    )
