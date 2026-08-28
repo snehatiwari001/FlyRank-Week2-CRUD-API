@@ -1,322 +1,151 @@
-\# FlyRank Week 2 — CRUD API
+# FlyRank Week 2 — CRUD API with SQLite
 
+A Task CRUD API built with **FastAPI** and **SQLite**.
 
+## Project Overview
 
-A simple \*\*Task CRUD API\*\* built with \*\*Python and FastAPI\*\* as part of the FlyRank Week 2 assignment.
+This project started as an in-memory CRUD API and was updated to use a real SQLite database for persistent storage.
 
+The API keeps the same CRUD endpoints while storing tasks permanently in `tasks.db`.
 
-
-The API manages an in-memory list of tasks and supports the four CRUD operations:
-
-
-
-\* \*\*Create\*\* — `POST /tasks`
-
-\* \*\*Read\*\* — `GET /tasks` and `GET /tasks/{task\_id}`
-
-\* \*\*Update\*\* — `PUT /tasks/{task\_id}`
-
-\* \*\*Delete\*\* — `DELETE /tasks/{task\_id}`
-
-
-
-Data is stored only in memory, so tasks are reset when the server restarts.
-
-
-
-\## Tech Stack
-
-
-
-\* Python 3.10+
-
-\* FastAPI
-
-\* Uvicorn
-
-\* Swagger UI / OpenAPI
-
-
-
-\## Installation and Run
-
-
-
-\### 1. Activate the virtual environment
-
-
-
-On Windows PowerShell:
-
-
-
-```powershell
-
-.\\venv\\Scripts\\Activate.ps1
-
-```
-
-
-
-\### 2. Install dependencies
-
-
-
-```powershell
-
-pip install fastapi uvicorn
-
-```
-
-
-
-\### 3. Start the server
-
-
-
-```powershell
-
-uvicorn main:app --reload
-
-```
-
-
-
-The API will be available at:
-
-
+### Architecture
 
 ```text
-
-http://127.0.0.1:8000
-
+Client → FastAPI API → SQLite Database
 ```
 
+## Why SQLite?
 
+SQLite was chosen because it is lightweight, simple to set up, and does not require a separate database server.
 
-\## Swagger UI
+The database is stored as a single file, making it suitable for this assignment and easy to run locally.
 
+## Database
 
-
-FastAPI automatically provides interactive API documentation at:
-
-
+The SQLite database file is:
 
 ```text
-
-http://127.0.0.1:8000/docs
-
+tasks.db
 ```
 
+It is stored in the root directory of the project:
 
-
-Swagger UI can be used to test the complete CRUD cycle without curl.
-
-
-
-\## API Endpoints
-
-
-
-| Method | Endpoint           | Description       | Success |
-
-| ------ | ------------------ | ----------------- | ------- |
-
-| GET    | `/`                | API information   | 200     |
-
-| GET    | `/health`          | Check API health  | 200     |
-
-| GET    | `/tasks`           | List all tasks    | 200     |
-
-| GET    | `/tasks/{task\_id}` | Get a task by ID  | 200     |
-
-| POST   | `/tasks`           | Create a new task | 201     |
-
-| PUT    | `/tasks/{task\_id}` | Update a task     | 200     |
-
-| DELETE | `/tasks/{task\_id}` | Delete a task     | 204     |
-
-
-
-\### Error Responses
-
-
-
-| Status | Meaning                       |
-
-| ------ | ----------------------------- |
-
-| 400    | Invalid or missing task title |
-
-| 404    | Task ID not found             |
-
-
-
-\## Example Task
-
-
-
-```json
-
-{
-
-&#x20; "id": 1,
-
-&#x20; "title": "Learn FastAPI",
-
-&#x20; "done": false
-
-}
-
+```text
+FlyRank-Week2-CRUD-API/
+├── main.py
+├── tasks.db
+├── database.png
+├── swagger.png
+└── README.md
 ```
 
+The application automatically creates the database and `tasks` table if they do not already exist.
 
+Three example tasks are inserted only when the table is empty.
 
-\## Example curl Test
+## How to Start the Project
 
-
-
-\### Get all tasks
-
-
+### 1. Clone the repository
 
 ```bash
-
-curl -i http://127.0.0.1:8000/tasks
-
+git clone https://github.com/snehatiwari001/FlyRank-Week2-CRUD-API.git
+cd FlyRank-Week2-CRUD-API
 ```
 
+### 2. Activate the virtual environment
 
+Windows PowerShell:
 
-Example response:
+```powershell
+.\venv\Scripts\Activate.ps1
+```
 
+### 3. Start the FastAPI server
 
+```powershell
+uvicorn main:app --reload
+```
+
+The API will run at:
 
 ```text
-
-HTTP/1.1 200 OK
-
-content-type: application/json
-
-
-
-\[
-
-&#x20; {
-
-&#x20;   "id": 1,
-
-&#x20;   "title": "Learn FastAPI",
-
-&#x20;   "done": false
-
-&#x20; },
-
-&#x20; {
-
-&#x20;   "id": 2,
-
-&#x20;   "title": "Build a CRUD API",
-
-&#x20;   "done": false
-
-&#x20; },
-
-&#x20; {
-
-&#x20;   "id": 3,
-
-&#x20;   "title": "Complete FlyRank Week 2",
-
-&#x20;   "done": false
-
-&#x20; }
-
-]
-
+http://127.0.0.1:8000
 ```
 
-
-
-\## CRUD Flow
-
-
-
-The API supports the complete CRUD lifecycle:
-
-
+Swagger API documentation is available at:
 
 ```text
-
-POST /tasks
-
-&#x20;    ↓
-
-GET /tasks/{task\_id}
-
-&#x20;    ↓
-
-PUT /tasks/{task\_id}
-
-&#x20;    ↓
-
-DELETE /tasks/{task\_id}
-
+http://127.0.0.1:8000/docs
 ```
 
+## API Endpoints
 
+| Method | Endpoint           | Description      |
+| ------ | ------------------ | ---------------- |
+| GET    | `/`                | API information  |
+| GET    | `/health`          | Health check     |
+| GET    | `/tasks`           | Get all tasks    |
+| GET    | `/tasks/{task_id}` | Get a task by ID |
+| POST   | `/tasks`           | Create a task    |
+| PUT    | `/tasks/{task_id}` | Update a task    |
+| DELETE | `/tasks/{task_id}` | Delete a task    |
 
-The complete CRUD cycle was also tested through Swagger UI.
+## SQLite SQL Queries
 
+The following SQL queries were executed manually using DB Browser for SQLite.
 
+### List all tasks
 
-\## Project Structure
-
-
-
-```text
-
-FlyRank-Week2-CRUD-API/
-
-├── main.py
-
-├── .gitignore
-
-├── README.md
-
-└── venv/
-
+```sql
+SELECT * FROM tasks;
 ```
 
+### Show completed tasks
 
+```sql
+SELECT * FROM tasks WHERE done = 1;
+```
 
-> The `venv/` directory is local to the development environment and is not committed to GitHub.
+### Count tasks
 
+```sql
+SELECT COUNT(*) FROM tasks;
+```
 
+### Mark all tasks as completed
 
-\## Status
+```sql
+UPDATE tasks SET done = 1;
+```
 
+### Delete completed tasks
 
+```sql
+DELETE FROM tasks WHERE done = 1;
+```
 
-✅ Stage 0 — Hello server
+## Database Screenshot
 
-✅ Stage 1 — Root and health endpoints
+The database was opened using DB Browser for SQLite.
 
-✅ Stage 2 — Read endpoints with 404
+![SQLite Database](database.png)
 
-✅ Stage 3 — Create task with validation
+## Features
 
-✅ Stage 4 — Update and delete task
+* FastAPI CRUD API
+* SQLite persistent storage
+* Automatic database creation
+* Automatic table creation
+* Example data inserted on first run
+* 400 validation errors for invalid titles
+* 404 errors for unknown task IDs
+* Data persists across server restarts
 
-✅ Stage 5 — Swagger UI
+## Assignment Stages
 
-✅ Stage 6 — GitHub publication and documentation
-
-\## Swagger UI Screenshot
-
-
-
-!\[Swagger UI](swagger.png)
-
-
-
+* ✅ Stage 0 — Create SQLite database
+* ✅ Stage 1 — Database read endpoints
+* ✅ Stage 2 — Insert into database
+* ✅ Stage 3 — Update and delete with SQL
+* ✅ Stage 4 — Explore SQLite
+* ✅ Stage 5 — Database documentation
