@@ -1,48 +1,8 @@
 from fastapi import FastAPI, HTTPException, Body
-import sqlite3
+
+import repository
 
 app = FastAPI()
-
-DATABASE = "tasks.db"
-
-
-# Connect to database
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-# Create table and insert example tasks if database is empty
-def init_db():
-    conn = get_db()
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY,
-            title TEXT NOT NULL,
-            done BOOLEAN NOT NULL
-        )
-    """)
-
-    count = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
-
-    if count == 0:
-        conn.executemany(
-            "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
-            [
-                (1, "Learn FastAPI", False),
-                (2, "Build a CRUD API", False),
-                (3, "Complete FlyRank Week 2", False)
-            ]
-        )
-
-    conn.commit()
-    conn.close()
-
-
-# Initialize database when application starts
-init_db()
 
 
 @app.get("/", summary="API information")
@@ -61,30 +21,15 @@ def health():
 
 @app.get("/tasks", summary="List all tasks")
 def get_tasks():
-    conn = get_db()
-
-    tasks = conn.execute(
-        "SELECT id, title, done FROM tasks"
-    ).fetchall()
-
-    conn.close()
-
-    return [dict(task) for task in tasks]
+    return repository.get_all_tasks()
 
 
 @app.get("/tasks/{task_id}", summary="Get a task by ID")
 def get_task(task_id: int):
-    conn = get_db()
-
-    task = conn.execute(
-        "SELECT id, title, done FROM tasks WHERE id = ?",
-        (task_id,)
-    ).fetchone()
-
-    conn.close()
+    task = repository.get_task_by_id(task_id)
 
     if task:
-        return dict(task)
+        return task
 
     raise HTTPException(
         status_code=404,
@@ -102,40 +47,14 @@ def create_task(data: dict = Body(...)):
             detail="Title is required"
         )
 
-    conn = get_db()
-
-    new_id = conn.execute(
-        "SELECT COALESCE(MAX(id), 0) + 1 FROM tasks"
-    ).fetchone()[0]
-
-    conn.execute(
-        "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
-        (new_id, title, False)
-    )
-
-    conn.commit()
-
-    task = conn.execute(
-        "SELECT id, title, done FROM tasks WHERE id = ?",
-        (new_id,)
-    ).fetchone()
-
-    conn.close()
-
-    return dict(task)
+    return repository.create_task(title)
 
 
 @app.put("/tasks/{task_id}", summary="Update a task")
 def update_task(task_id: int, data: dict = Body(...)):
-    conn = get_db()
-
-    task = conn.execute(
-        "SELECT id, title, done FROM tasks WHERE id = ?",
-        (task_id,)
-    ).fetchone()
+    task = repository.get_task_by_id(task_id)
 
     if not task:
-        conn.close()
         raise HTTPException(
             status_code=404,
             detail=f"Task {task_id} not found"
@@ -143,57 +62,28 @@ def update_task(task_id: int, data: dict = Body(...)):
 
     if "title" in data:
         if not data["title"] or not data["title"].strip():
-            conn.close()
             raise HTTPException(
                 status_code=400,
                 detail="Title cannot be empty"
             )
 
-        conn.execute(
-            "UPDATE tasks SET title = ? WHERE id = ?",
-            (data["title"], task_id)
-        )
+    updated_task = repository.update_task(
+        task_id,
+        title=data.get("title"),
+        done=data.get("done")
+    )
 
-    if "done" in data:
-        conn.execute(
-            "UPDATE tasks SET done = ? WHERE id = ?",
-            (data["done"], task_id)
-        )
-
-    conn.commit()
-
-    updated_task = conn.execute(
-        "SELECT id, title, done FROM tasks WHERE id = ?",
-        (task_id,)
-    ).fetchone()
-
-    conn.close()
-
-    return dict(updated_task)
+    return updated_task
 
 
 @app.delete("/tasks/{task_id}", status_code=204, summary="Delete a task")
 def delete_task(task_id: int):
-    conn = get_db()
+    deleted = repository.delete_task(task_id)
 
-    task = conn.execute(
-        "SELECT id FROM tasks WHERE id = ?",
-        (task_id,)
-    ).fetchone()
-
-    if not task:
-        conn.close()
+    if not deleted:
         raise HTTPException(
             status_code=404,
             detail=f"Task {task_id} not found"
         )
-
-    conn.execute(
-        "DELETE FROM tasks WHERE id = ?",
-        (task_id,)
-    )
-
-    conn.commit()
-    conn.close()
 
     return
