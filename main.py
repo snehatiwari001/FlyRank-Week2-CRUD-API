@@ -11,7 +11,7 @@ tasks = [
 ]
 
 
-@app.get("/")
+@app.get("/", summary="API information")
 def home():
     return {
         "name": "Task API",
@@ -19,18 +19,17 @@ def home():
         "endpoints": ["/tasks"]
     }
 
-
-@app.get("/health")
+@app.get("/health", summary="Check API health")
 def health():
     return {"status": "ok"}
 
 
-@app.get("/tasks")
+@app.get("/tasks", summary="List all tasks")
 def get_tasks():
     return tasks
 
 
-@app.get("/tasks/{task_id}")
+@app.get("/tasks/{task_id}", summary="Get a task by ID")
 def get_task(task_id: int):
     for task in tasks:
         if task["id"] == task_id:
@@ -42,7 +41,7 @@ def get_task(task_id: int):
     )
 
 
-@app.post("/tasks", status_code=201)
+@app.post("/tasks", status_code=201, summary="Create a new task")
 def create_task(data: dict = Body(...)):
     title = data.get("title")
 
@@ -61,7 +60,7 @@ def create_task(data: dict = Body(...)):
     tasks.append(new_task)
 
     return new_task
-@app.put("/tasks/{task_id}")
+@app.put("/tasks/{task_id}", summary="Update a task")
 def update_task(task_id: int, data: dict = Body(...)):
     for task in tasks:
         if task["id"] == task_id:
@@ -83,14 +82,12 @@ def update_task(task_id: int, data: dict = Body(...)):
         status_code=404,
         detail=f"Task {task_id} not found"
     )
-@app.delete("/tasks/{task_id}")
+@app.delete("/tasks/{task_id}", status_code=204, summary="Delete a task")
 def delete_task(task_id: int):
     for task in tasks:
         if task["id"] == task_id:
             tasks.remove(task)
-            return {
-                "message": f"Task {task_id} deleted"
-            }
+            return
 
     raise HTTPException(
         status_code=404,
